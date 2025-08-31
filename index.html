@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin Predictor Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --color-up: #00C853;
+            --color-down: #FF1744;
+            --color-neutral: #2962FF;
+            --bg-dark: #0a0e17;
+            --card-bg: #1a2238;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+
+        .glass-card {
+            background: rgba(26, 34, 56, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .price-display {
+            font-size: 2.8rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .change-display {
+            font-size: 1.2rem;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .positive { color: var(--color-up); }
+        .negative { color: var(--color-down); }
+
+        .direction-display {
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .direction-up { background: rgba(0, 200, 83, 0.2); color: var(--color-up); }
+        .direction-down { background: rgba(255, 23, 68, 0.2); color: var(--color-down); }
+        .direction-neutral { background: rgba(41, 98, 255, 0.2); color: var(--color-neutral); }
+
+        .confidence-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .indicator-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .indicator-item {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 20px;
+            padding: 12px 25px;
+            width: 100%;
+        }
+        
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="text-center mb-4">
+            <h3><i class="fas fa-bolt"></i> Bitcoin Predictor</h3>
+            <p class="text-muted">Análise em tempo real</p>
+        </div>
+
+        <!-- Preço Atual -->
+        <div class="glass-card text-center">
+            <h5><i class="fas fa-coins"></i> PREÇO ATUAL</h5>
+            <div class="price-display" id="currentPrice">Carregando...</div>
+            <div class="change-display" id="priceChange">--</div>
+        </div>
+
+        <!-- Previsão -->
+        <div class="glass-card text-center">
+            <h5><i class="fas fa-crystal-ball"></i> PREVISÃO 90MIN</h5>
+            <div class="direction-display direction-neutral" id="directionDisplay">
+                ↻ CARREGANDO...
+            </div>
+            <div class="confidence-display" id="confidenceDisplay">
+                --
+            </div>
+            <div class="text-muted" id="trendStrength">
+                <i class="fas fa-wave-square"></i> FORÇA: --
+            </div>
+        </div>
+
+        <!-- Indicadores -->
+        <div class="glass-card">
+            <h5 class="text-center"><i class="fas fa-chart-line"></i> INDICADORES</h5>
+            <div class="indicator-grid">
+                <div class="indicator-item">
+                    <small>RSI</small>
+                    <div id="rsiValue">--</div>
+                </div>
+                <div class="indicator-item">
+                    <small>MACD</small>
+                    <div id="macdValue">--</div>
+                </div>
+                <div class="indicator-item">
+                    <small>Tendência</small>
+                    <div id="trendScore">--</div>
+                </div>
+                <div class="indicator-item">
+                    <small>Pontuação</small>
+                    <div id="totalScore">--</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informações -->
+        <div class="glass-card text-center">
+            <div class="row">
+                <div class="col-6">
+                    <small><i class="fas fa-clock"></i> Atualizado<br>
+                    <strong id="lastUpdate">--:--:--</strong></small>
+                </div>
+                <div class="col-6">
+                    <small><i class="fas fa-hourglass"></i> Válido até<br>
+                    <strong id="predictionTime">--:--</strong></small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botão -->
+        <button class="btn btn-primary" onclick="loadData()" id="refreshButton">
+            <i class="fas fa-sync-alt"></i> ATUALIZAR
+        </button>
+    </div>
+
+    <script>
+        function updateDisplay(data) {
+            // Preço e variação
+            document.getElementById('currentPrice').textContent = 
+                '$' + data.current_price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            const changeElem = document.getElementById('priceChange');
+            if (data.price_change_percent >= 0) {
+                changeElem.innerHTML = `<span class="positive">+${data.price_change_percent.toFixed(2)}%</span>`;
+            } else {
+                changeElem.innerHTML = `<span class="negative">${data.price_change_percent.toFixed(2)}%</span>`;
+            }
+
+            // Direção
+            const directionDiv = document.getElementById('directionDisplay');
+            directionDiv.textContent = data.direction;
+            
+            if (data.direction.includes('SUBINDO')) {
+                directionDiv.className = 'direction-display direction-up pulse';
+            } else if (data.direction.includes('DESCENDO')) {
+                directionDiv.className = 'direction-display direction-down pulse';
+            } else {
+                directionDiv.className = 'direction-display direction-neutral pulse';
+            }
+
+            // Confiança
+            const confidenceDiv = document.getElementById('confidenceDisplay');
+            confidenceDiv.textContent = data.confidence + '%';
+            
+            if (data.direction.includes('SUBINDO')) {
+                confidenceDiv.className = 'confidence-display positive';
+            } else if (data.direction.includes('DESCENDO')) {
+                confidenceDiv.className = 'confidence-display negative';
+            } else {
+                confidenceDiv.className = 'confidence-display';
+            }
+
+            // Outros dados
+            document.getElementById('trendStrength').innerHTML = 
+                `<i class="fas fa-wave-square"></i> FORÇA: ${data.trend_strength}`;
+            
+            // Atualizar indicadores
+            document.getElementById('rsiValue').textContent = data.analysis.rsi_value.toFixed(1);
+            document.getElementById('rsiValue').className = data.analysis.rsi_value > 70 ? 'negative' : 
+                                                          data.analysis.rsi_value < 30 ? 'positive' : '';
+            
+            document.getElementById('macdValue').textContent = data.analysis.macd_value.toFixed(1);
+            document.getElementById('macdValue').className = data.analysis.macd_value > 0 ? 'positive' : 'negative';
+            
+            document.getElementById('trendScore').textContent = data.analysis.trend_score;
+            document.getElementById('trendScore').className = data.analysis.trend_score > 0 ? 'positive' : 
+                                                            data.analysis.trend_score < 0 ? 'negative' : '';
+            
+            document.getElementById('totalScore').textContent = data.analysis.total_score;
+            document.getElementById('totalScore').className = data.analysis.total_score > 0 ? 'positive' : 
+                                                            data.analysis.total_score < 0 ? 'negative' : '';
+            
+            document.getElementById('lastUpdate').textContent = data.last_update;
+            document.getElementById('predictionTime').textContent = data.prediction_time;
+        }
+
+        async function loadData() {
+            const button = document.getElementById('refreshButton');
+            button.classList.add('loading');
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ATUALIZANDO...';
+            
+            try {
+                const response = await fetch('/api/market-data');
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateDisplay(data);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+            } finally {
+                button.classList.remove('loading');
+                button.innerHTML = '<i class="fas fa-sync-alt"></i> ATUALIZAR';
+            }
+        }
+
+        // Carregar dados imediatamente e a cada 15 segundos
+        loadData();
+        setInterval(loadData, 15000);
+    </script>
+</body>
+</html>
